@@ -35,17 +35,19 @@ public class BoyerMooreMajorityVote {
             }
         }
 
-        // Phase 2: verify
+        // Phase 2: verify candidate with early exit
         int c = 0;
+        int threshold = a.length / 2;
         for (int v : a) {
             tracker.incAccesses(1);
             tracker.incComparisons();
-            if (v == candidate) c++;
+            if (v == candidate) {
+                c++;
+                if (c > threshold) {
+                    return Optional.of(candidate);
+                }
+            }
         }
-        if (c > a.length / 2) {
-            return Optional.of(candidate);
-        } else {
-            return Optional.empty();
-        }
+        return Optional.empty();
     }
 }
