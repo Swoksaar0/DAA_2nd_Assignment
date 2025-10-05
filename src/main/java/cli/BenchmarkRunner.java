@@ -2,28 +2,47 @@ package cli;
 
 import algorithms.BoyerMooreMajorityVote;
 import metrics.PerformanceTracker;
-import utils.CSVWriter;
+
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.Optional;
 import java.util.Random;
 
 public class BenchmarkRunner {
-    public static void main(String[] args) throws IOException {
-        String out = args.length>0? args[0] : "benchmark.csv";
-        try (CSVWriter csv = new CSVWriter(out)) {
-            csv.writeHeader("n","timeMs","comparisons","accesses");
-            PerformanceTracker tracker = new PerformanceTracker();
-            BoyerMooreMajorityVote bm = new BoyerMooreMajorityVote(tracker);
-            Random rng = new Random();
+    public static void main(String[] args) {
+        String outputFile = args.length > 0 ? args[0] : "benchmark.csv";
+        int[] sizes = {100, 1_000, 10_000, 100_000};
+        Random rng = new Random(42);
+        PerformanceTracker tracker = new PerformanceTracker();
+        BoyerMooreMajorityVote bm = new BoyerMooreMajorityVote(tracker);
 
-            int[] sizes = {100,1_000,10_000,100_000};
+        try (PrintWriter pw = new PrintWriter(new FileWriter(outputFile))) {
+            pw.println("n,timeNs,comparisons,swaps,arrayAccesses,allocations");
+
             for (int n : sizes) {
-                int[] data = rng.ints(n,0,10).toArray();
-                long t0 = System.nanoTime();
-                bm.findMajority(data);
-                long dt = (System.nanoTime()-t0)/1_000_000;
-                csv.writeRow(n, dt, tracker.getComparisons(), tracker.getAccesses());
+                tracker.reset();
+                tracker.incAllocations();
+                int[] data = new int[n];
+                for (int i = 0; i < n; i++) {
+                    data[i] = rng.nextInt(10);
+                }
+
+                Optional<Integer> maj = bm.findMajority(data);
+
+                pw.printf("%d,%d,%d,%d,%d,%d%n",
+                        n,
+                        tracker.getElapsedTimeNs(),
+                        tracker.getComparisons(),
+                        tracker.getSwaps(),
+                        tracker.getArrayAccesses(),
+                        tracker.getAllocations()
+                );
             }
-            System.out.println("Results → " + out);
+            System.out.println("CSV written to " + outputFile);
+        } catch (IOException e) {
+            System.err.println("Error writing CSV: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }
